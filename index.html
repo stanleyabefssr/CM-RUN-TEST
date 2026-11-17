@@ -1,0 +1,2407 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#28594a"><title>中藥材辨認遊戲</title>
+<style>
+:root{--ink:#20372f;--muted:#66766e;--green:#28594a;--cream:#f5f3eb;--paper:#fffefa;--line:#dfe5dc;--gold:#e6bd69}*{box-sizing:border-box}body{margin:0;background:var(--cream);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}.wrap{max-width:900px;margin:auto;padding:24px 18px 48px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px}.tag{font-size:13px;color:var(--muted)}h1{margin:8px 0 4px;font-size:clamp(25px,5vw,36px)}.sub{color:var(--muted);margin:0 0 20px}.toolbar,.actions{display:flex;flex-wrap:wrap;gap:8px}.toolbar{margin-bottom:14px}button,select{font:inherit}button{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:12px;padding:10px 14px;cursor:pointer}button:hover{border-color:var(--green)}button.primary{background:var(--green);color:white;border-color:var(--green)}button.good{background:#e4f2e7;color:#245c35;border-color:#c5dfca}button.review{background:#fff0de;color:#7e4d19;border-color:#f1d5b1}.select{background:white;border:1px solid var(--line);border-radius:12px;padding:9px 12px;color:var(--ink)}.stats{display:flex;justify-content:space-between;color:var(--muted);font-size:14px;margin:8px 2px}.bar{height:5px;background:#e1e5dd;border-radius:8px;overflow:hidden;margin-bottom:14px}.bar i{height:100%;display:block;width:0;background:var(--gold);transition:width .2s}.card{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:14px;box-shadow:0 8px 30px #344c3b0d}.photo{height:min(57vh,540px);min-height:250px;background:#daf1f4;border-radius:14px;overflow:hidden;display:flex;align-items:center;justify-content:center}.photo canvas{width:100%;height:100%;object-fit:contain}.fallback{padding:22px;text-align:center;color:var(--muted);display:none}.answer{display:none;text-align:center;padding:20px 10px 12px}.answer.show{display:block}.answer h2{font-size:clamp(25px,6vw,38px);margin:0 0 3px}.answer p{margin:0;color:var(--muted)}.actions{justify-content:center;margin:15px 0 4px}.hidden{display:none!important}.hint{text-align:center;color:var(--muted);font-size:14px;margin:12px 0 2px}.foot{font-size:12px;color:var(--muted);text-align:center;margin-top:14px}@media(max-width:520px){.wrap{padding:17px 12px 30px}.card{padding:9px}.photo{height:52vh;min-height:220px}}
+</style></head><body><main class="wrap"><div class="top"><span class="tag">藥材標本複習遊戲</span><span class="tag" id="totalTag"></span></div><h1>看圖猜藥名</h1><p class="sub">先看標本照片猜答案，再翻牌核對。答對得分，答不出來就放進複習清單。</p>
+<div class="toolbar"><select class="select" id="mode"><option value="all">全部藥材（340 味）</option><option value="due">只練待複習</option></select><button id="shuffle">重新洗牌</button><button id="reset">重設紀錄</button></div>
+<div class="stats"><span id="progress">第 1 張</span><span id="score"></span></div><div class="bar"><i id="fill"></i></div>
+<section class="card"><div class="photo"><canvas id="specimen" aria-label="中藥材標本照片"></canvas><div class="fallback" id="fallback">這張照片的格式可能不受目前瀏覽器支援。<br><span id="fallbackFile"></span></div></div><div class="answer" id="answer"><h2 id="name"></h2><p id="number"></p></div></section>
+<div class="hint" id="hint">心中想好答案後，按「翻開藥名」</div><div class="actions"><button class="primary" id="reveal">翻開藥名</button><button class="good hidden" id="correct">答對 ✓</button><button class="review hidden" id="again">加入待複習</button><button class="primary hidden" id="next">下一味 →</button></div><div class="actions"><button id="prev">← 上一味</button><button id="skip">跳過 →</button></div><p class="foot">這是離線網頁遊戲；答題紀錄保存在目前瀏覽器中。分享給朋友時需先發布到網站。</p></main>
+<script>
+const ITEMS = [
+  {
+    "id": 1,
+    "name": "（公）丁香",
+    "file": "001.（公）丁香.jpg",
+    "sheet": "sheet-01.jpg",
+    "slot": 0
+  },
+  {
+    "id": 2,
+    "name": "（母）丁香",
+    "file": "002.（母）丁香.jpg",
+    "sheet": "sheet-01.jpg",
+    "slot": 1
+  },
+  {
+    "id": 3,
+    "name": "（生）白朮",
+    "file": "003.（生）白朮.jpg",
+    "sheet": "sheet-01.jpg",
+    "slot": 2
+  },
+  {
+    "id": 4,
+    "name": "（炒）白朮",
+    "file": "004.（炒）白朮.jpg",
+    "sheet": "sheet-01.jpg",
+    "slot": 3
+  },
+  {
+    "id": 5,
+    "name": "（生）白芍",
+    "file": "005.（生）白芍.jpg",
+    "sheet": "sheet-01.jpg",
+    "slot": 4
+  },
+  {
+    "id": 6,
+    "name": "(炒)白芍",
+    "file": "006.(炒)白芍.jpg",
+    "sheet": "sheet-01.jpg",
+    "slot": 5
+  },
+  {
+    "id": 7,
+    "name": "（生）地黃",
+    "file": "007.（生）地黃.jpg",
+    "sheet": "sheet-01.jpg",
+    "slot": 6
+  },
+  {
+    "id": 8,
+    "name": "（熟）地黃",
+    "file": "008.（熟）地黃.jpg",
+    "sheet": "sheet-01.jpg",
+    "slot": 7
+  },
+  {
+    "id": 9,
+    "name": "一條根",
+    "file": "009.一條根.jpg",
+    "sheet": "sheet-01.jpg",
+    "slot": 8
+  },
+  {
+    "id": 10,
+    "name": "九節菖蒲",
+    "file": "010.九節菖蒲.jpg",
+    "sheet": "sheet-01.jpg",
+    "slot": 9
+  },
+  {
+    "id": 11,
+    "name": "八角茴香",
+    "file": "011.八角茴香.jpg",
+    "sheet": "sheet-01.jpg",
+    "slot": 10
+  },
+  {
+    "id": 12,
+    "name": "三七",
+    "file": "012.三七.jpg",
+    "sheet": "sheet-01.jpg",
+    "slot": 11
+  },
+  {
+    "id": 13,
+    "name": "三稜",
+    "file": "013.三稜.jpg",
+    "sheet": "sheet-01.jpg",
+    "slot": 12
+  },
+  {
+    "id": 14,
+    "name": "土茯苓",
+    "file": "014.土茯苓.jpg",
+    "sheet": "sheet-01.jpg",
+    "slot": 13
+  },
+  {
+    "id": 15,
+    "name": "大青葉",
+    "file": "015.大青葉.jpg",
+    "sheet": "sheet-01.jpg",
+    "slot": 14
+  },
+  {
+    "id": 16,
+    "name": "大黃",
+    "file": "016.大黃.jpg",
+    "sheet": "sheet-01.jpg",
+    "slot": 15
+  },
+  {
+    "id": 17,
+    "name": "大腹皮",
+    "file": "017.大腹皮.jpg",
+    "sheet": "sheet-01.jpg",
+    "slot": 16
+  },
+  {
+    "id": 18,
+    "name": "大薊",
+    "file": "018.大薊.jpg",
+    "sheet": "sheet-01.jpg",
+    "slot": 17
+  },
+  {
+    "id": 19,
+    "name": "女貞子",
+    "file": "019.女貞子.jpg",
+    "sheet": "sheet-01.jpg",
+    "slot": 18
+  },
+  {
+    "id": 20,
+    "name": "小茴香",
+    "file": "020.小茴香.jpg",
+    "sheet": "sheet-01.jpg",
+    "slot": 19
+  },
+  {
+    "id": 21,
+    "name": "山豆根",
+    "file": "021.山豆根.jpg",
+    "sheet": "sheet-02.jpg",
+    "slot": 0
+  },
+  {
+    "id": 22,
+    "name": "山柰",
+    "file": "022.山柰.jpg",
+    "sheet": "sheet-02.jpg",
+    "slot": 1
+  },
+  {
+    "id": 23,
+    "name": "山茱萸",
+    "file": "023.山茱萸.jpg",
+    "sheet": "sheet-02.jpg",
+    "slot": 2
+  },
+  {
+    "id": 24,
+    "name": "山慈菇",
+    "file": "024.山慈菇.jpg",
+    "sheet": "sheet-02.jpg",
+    "slot": 3
+  },
+  {
+    "id": 25,
+    "name": "山楂",
+    "file": "025.山楂.jpg",
+    "sheet": "sheet-02.jpg",
+    "slot": 4
+  },
+  {
+    "id": 26,
+    "name": "山藥",
+    "file": "026.山藥.jpg",
+    "sheet": "sheet-02.jpg",
+    "slot": 5
+  },
+  {
+    "id": 27,
+    "name": "川木通",
+    "file": "027.川木通.jpg",
+    "sheet": "sheet-02.jpg",
+    "slot": 6
+  },
+  {
+    "id": 28,
+    "name": "川牛膝",
+    "file": "028.川牛膝.jpg",
+    "sheet": "sheet-02.jpg",
+    "slot": 7
+  },
+  {
+    "id": 29,
+    "name": "川貝母",
+    "file": "029.川貝母.jpg",
+    "sheet": "sheet-02.jpg",
+    "slot": 8
+  },
+  {
+    "id": 30,
+    "name": "川烏頭",
+    "file": "030.川烏頭.jpg",
+    "sheet": "sheet-02.jpg",
+    "slot": 9
+  },
+  {
+    "id": 31,
+    "name": "川楝子",
+    "file": "031.川楝子.jpg",
+    "sheet": "sheet-02.jpg",
+    "slot": 10
+  },
+  {
+    "id": 32,
+    "name": "丹參",
+    "file": "032.丹參.jpg",
+    "sheet": "sheet-02.jpg",
+    "slot": 11
+  },
+  {
+    "id": 33,
+    "name": "五加皮",
+    "file": "033.五加皮.jpg",
+    "sheet": "sheet-02.jpg",
+    "slot": 12
+  },
+  {
+    "id": 34,
+    "name": "五味子",
+    "file": "034.五味子.jpg",
+    "sheet": "sheet-02.jpg",
+    "slot": 13
+  },
+  {
+    "id": 35,
+    "name": "五倍子",
+    "file": "035.五倍子.jpg",
+    "sheet": "sheet-02.jpg",
+    "slot": 14
+  },
+  {
+    "id": 36,
+    "name": "五靈脂",
+    "file": "036.五靈脂.jpg",
+    "sheet": "sheet-02.jpg",
+    "slot": 15
+  },
+  {
+    "id": 37,
+    "name": "升麻",
+    "file": "037.升麻.jpg",
+    "sheet": "sheet-02.jpg",
+    "slot": 16
+  },
+  {
+    "id": 38,
+    "name": "天竺黃",
+    "file": "038.天竺黃.jpg",
+    "sheet": "sheet-02.jpg",
+    "slot": 17
+  },
+  {
+    "id": 39,
+    "name": "天花粉",
+    "file": "039.天花粉.jpg",
+    "sheet": "sheet-02.jpg",
+    "slot": 18
+  },
+  {
+    "id": 40,
+    "name": "天門冬",
+    "file": "040.天門冬.jpg",
+    "sheet": "sheet-02.jpg",
+    "slot": 19
+  },
+  {
+    "id": 41,
+    "name": "天南星",
+    "file": "041.天南星.jpg",
+    "sheet": "sheet-03.jpg",
+    "slot": 0
+  },
+  {
+    "id": 42,
+    "name": "天麻",
+    "file": "042.天麻.jpg",
+    "sheet": "sheet-03.jpg",
+    "slot": 1
+  },
+  {
+    "id": 43,
+    "name": "太子參",
+    "file": "043.太子參.jpg",
+    "sheet": "sheet-03.jpg",
+    "slot": 2
+  },
+  {
+    "id": 44,
+    "name": "巴豆",
+    "file": "044.巴豆.jpg",
+    "sheet": "sheet-03.jpg",
+    "slot": 3
+  },
+  {
+    "id": 45,
+    "name": "巴戟天",
+    "file": "045.巴戟天.jpg",
+    "sheet": "sheet-03.jpg",
+    "slot": 4
+  },
+  {
+    "id": 46,
+    "name": "木瓜",
+    "file": "046.木瓜.jpg",
+    "sheet": "sheet-03.jpg",
+    "slot": 5
+  },
+  {
+    "id": 47,
+    "name": "木香",
+    "file": "047.木香.jpg",
+    "sheet": "sheet-03.jpg",
+    "slot": 6
+  },
+  {
+    "id": 48,
+    "name": "木斛",
+    "file": "048.木斛.jpg",
+    "sheet": "sheet-03.jpg",
+    "slot": 7
+  },
+  {
+    "id": 49,
+    "name": "木賊",
+    "file": "049.木賊.jpg",
+    "sheet": "sheet-03.jpg",
+    "slot": 8
+  },
+  {
+    "id": 50,
+    "name": "木蝴蝶",
+    "file": "050.木蝴蝶.jpg",
+    "sheet": "sheet-03.jpg",
+    "slot": 9
+  },
+  {
+    "id": 51,
+    "name": "木鱉子",
+    "file": "051.木鱉子.jpg",
+    "sheet": "sheet-03.jpg",
+    "slot": 10
+  },
+  {
+    "id": 52,
+    "name": "水蛭",
+    "file": "052.水蛭.jpg",
+    "sheet": "sheet-03.jpg",
+    "slot": 11
+  },
+  {
+    "id": 53,
+    "name": "火麻仁",
+    "file": "053.火麻仁.jpg",
+    "sheet": "sheet-03.jpg",
+    "slot": 12
+  },
+  {
+    "id": 54,
+    "name": "牛蒡子",
+    "file": "054.牛蒡子.jpg",
+    "sheet": "sheet-03.jpg",
+    "slot": 13
+  },
+  {
+    "id": 55,
+    "name": "王不留行",
+    "file": "055.王不留行.jpg",
+    "sheet": "sheet-03.jpg",
+    "slot": 14
+  },
+  {
+    "id": 56,
+    "name": "仙鶴草",
+    "file": "056.仙鶴草.jpg",
+    "sheet": "sheet-03.jpg",
+    "slot": 15
+  },
+  {
+    "id": 57,
+    "name": "代赭石",
+    "file": "057.代赭石.jpg",
+    "sheet": "sheet-03.jpg",
+    "slot": 16
+  },
+  {
+    "id": 58,
+    "name": "冬瓜子",
+    "file": "058.冬瓜子.jpg",
+    "sheet": "sheet-03.jpg",
+    "slot": 17
+  },
+  {
+    "id": 59,
+    "name": "冬葵果",
+    "file": "059.冬葵果.jpg",
+    "sheet": "sheet-03.jpg",
+    "slot": 18
+  },
+  {
+    "id": 60,
+    "name": "北沙參",
+    "file": "060.北沙參.jpg",
+    "sheet": "sheet-03.jpg",
+    "slot": 19
+  },
+  {
+    "id": 61,
+    "name": "北板藍根",
+    "file": "061.北板藍根.jpg",
+    "sheet": "sheet-04.jpg",
+    "slot": 0
+  },
+  {
+    "id": 62,
+    "name": "北茵陳",
+    "file": "062.北茵陳.jpg",
+    "sheet": "sheet-04.jpg",
+    "slot": 1
+  },
+  {
+    "id": 63,
+    "name": "北劉寄奴",
+    "file": "063.北劉寄奴.jpg",
+    "sheet": "sheet-04.jpg",
+    "slot": 2
+  },
+  {
+    "id": 64,
+    "name": "半枝蓮",
+    "file": "064.半枝蓮.jpg",
+    "sheet": "sheet-04.jpg",
+    "slot": 3
+  },
+  {
+    "id": 65,
+    "name": "玄參",
+    "file": "065.玄參.jpg",
+    "sheet": "sheet-04.jpg",
+    "slot": 4
+  },
+  {
+    "id": 66,
+    "name": "玉竹",
+    "file": "066.玉竹.jpg",
+    "sheet": "sheet-04.jpg",
+    "slot": 5
+  },
+  {
+    "id": 67,
+    "name": "玉米鬚",
+    "file": "067.玉米鬚.jpg",
+    "sheet": "sheet-04.jpg",
+    "slot": 6
+  },
+  {
+    "id": 68,
+    "name": "甘松",
+    "file": "068.甘松.jpg",
+    "sheet": "sheet-04.jpg",
+    "slot": 7
+  },
+  {
+    "id": 69,
+    "name": "甘草",
+    "file": "069.甘草.jpg",
+    "sheet": "sheet-04.jpg",
+    "slot": 8
+  },
+  {
+    "id": 70,
+    "name": "甘遂",
+    "file": "070.甘遂.jpg",
+    "sheet": "sheet-04.jpg",
+    "slot": 9
+  },
+  {
+    "id": 71,
+    "name": "白及",
+    "file": "071.白及.jpg",
+    "sheet": "sheet-04.jpg",
+    "slot": 10
+  },
+  {
+    "id": 72,
+    "name": "白果",
+    "file": "072.白果.jpg",
+    "sheet": "sheet-04.jpg",
+    "slot": 11
+  },
+  {
+    "id": 73,
+    "name": "白芥子",
+    "file": "073.白芥子.jpg",
+    "sheet": "sheet-04.jpg",
+    "slot": 12
+  },
+  {
+    "id": 74,
+    "name": "白花蛇舌草",
+    "file": "074.白花蛇舌草.jpg",
+    "sheet": "sheet-04.jpg",
+    "slot": 13
+  },
+  {
+    "id": 75,
+    "name": "白芷",
+    "file": "075.白芷.jpg",
+    "sheet": "sheet-04.jpg",
+    "slot": 14
+  },
+  {
+    "id": 76,
+    "name": "白附子",
+    "file": "076.白附子.jpg",
+    "sheet": "sheet-04.jpg",
+    "slot": 15
+  },
+  {
+    "id": 77,
+    "name": "白附片",
+    "file": "077.白附片.jpg",
+    "sheet": "sheet-04.jpg",
+    "slot": 16
+  },
+  {
+    "id": 78,
+    "name": "白前",
+    "file": "078.白前.jpg",
+    "sheet": "sheet-04.jpg",
+    "slot": 17
+  },
+  {
+    "id": 79,
+    "name": "白扁豆",
+    "file": "079.白扁豆.jpg",
+    "sheet": "sheet-04.jpg",
+    "slot": 18
+  },
+  {
+    "id": 80,
+    "name": "白胡椒",
+    "file": "080.白胡椒.jpg",
+    "sheet": "sheet-04.jpg",
+    "slot": 19
+  },
+  {
+    "id": 81,
+    "name": "白茅根",
+    "file": "081.白茅根.jpg",
+    "sheet": "sheet-05.jpg",
+    "slot": 0
+  },
+  {
+    "id": 82,
+    "name": "白頭翁",
+    "file": "082.白頭翁.jpg",
+    "sheet": "sheet-05.jpg",
+    "slot": 1
+  },
+  {
+    "id": 83,
+    "name": "白殭蠶",
+    "file": "083.白殭蠶.jpg",
+    "sheet": "sheet-05.jpg",
+    "slot": 2
+  },
+  {
+    "id": 84,
+    "name": "白薇",
+    "file": "084.白薇.jpg",
+    "sheet": "sheet-05.jpg",
+    "slot": 3
+  },
+  {
+    "id": 85,
+    "name": "白鮮皮",
+    "file": "085.白鮮皮.jpg",
+    "sheet": "sheet-05.jpg",
+    "slot": 4
+  },
+  {
+    "id": 86,
+    "name": "白蘞",
+    "file": "086.白蘞.jpg",
+    "sheet": "sheet-05.jpg",
+    "slot": 5
+  },
+  {
+    "id": 87,
+    "name": "石決明",
+    "file": "087.石決明.jpg",
+    "sheet": "sheet-05.jpg",
+    "slot": 6
+  },
+  {
+    "id": 88,
+    "name": "石韋",
+    "file": "088.石韋.jpg",
+    "sheet": "sheet-05.jpg",
+    "slot": 7
+  },
+  {
+    "id": 89,
+    "name": "石斛",
+    "file": "089.石斛.jpg",
+    "sheet": "sheet-05.jpg",
+    "slot": 8
+  },
+  {
+    "id": 90,
+    "name": "石菖蒲",
+    "file": "090.石菖蒲.jpg",
+    "sheet": "sheet-05.jpg",
+    "slot": 9
+  },
+  {
+    "id": 91,
+    "name": "石榴皮",
+    "file": "091.石榴皮.jpg",
+    "sheet": "sheet-05.jpg",
+    "slot": 10
+  },
+  {
+    "id": 92,
+    "name": "石膏",
+    "file": "092.石膏.jpg",
+    "sheet": "sheet-05.jpg",
+    "slot": 11
+  },
+  {
+    "id": 93,
+    "name": "石蓮子",
+    "file": "093.石蓮子.jpg",
+    "sheet": "sheet-05.jpg",
+    "slot": 12
+  },
+  {
+    "id": 94,
+    "name": "冰片",
+    "file": "094.冰片.jpg",
+    "sheet": "sheet-05.jpg",
+    "slot": 13
+  },
+  {
+    "id": 95,
+    "name": "合歡皮",
+    "file": "095.合歡皮.jpg",
+    "sheet": "sheet-05.jpg",
+    "slot": 14
+  },
+  {
+    "id": 96,
+    "name": "地骨皮",
+    "file": "096.地骨皮.jpg",
+    "sheet": "sheet-05.jpg",
+    "slot": 15
+  },
+  {
+    "id": 97,
+    "name": "地榆",
+    "file": "097.地榆.jpg",
+    "sheet": "sheet-05.jpg",
+    "slot": 16
+  },
+  {
+    "id": 98,
+    "name": "地膚子",
+    "file": "098.地膚子.jpg",
+    "sheet": "sheet-05.jpg",
+    "slot": 17
+  },
+  {
+    "id": 99,
+    "name": "地龍",
+    "file": "099.地龍.jpg",
+    "sheet": "sheet-05.jpg",
+    "slot": 18
+  },
+  {
+    "id": 100,
+    "name": "地鱉蟲",
+    "file": "100.地鱉蟲.jpg",
+    "sheet": "sheet-05.jpg",
+    "slot": 19
+  },
+  {
+    "id": 101,
+    "name": "百合",
+    "file": "101.百合.jpg",
+    "sheet": "sheet-06.jpg",
+    "slot": 0
+  },
+  {
+    "id": 102,
+    "name": "百部",
+    "file": "102.百部.jpg",
+    "sheet": "sheet-06.jpg",
+    "slot": 1
+  },
+  {
+    "id": 103,
+    "name": "竹茹",
+    "file": "103.竹茹.jpg",
+    "sheet": "sheet-06.jpg",
+    "slot": 2
+  },
+  {
+    "id": 104,
+    "name": "肉豆蔻",
+    "file": "104.肉豆蔻.jpg",
+    "sheet": "sheet-06.jpg",
+    "slot": 3
+  },
+  {
+    "id": 105,
+    "name": "肉桂",
+    "file": "105.肉桂.jpg",
+    "sheet": "sheet-06.jpg",
+    "slot": 4
+  },
+  {
+    "id": 106,
+    "name": "肉蓯蓉",
+    "file": "106.肉蓯蓉.jpg",
+    "sheet": "sheet-06.jpg",
+    "slot": 5
+  },
+  {
+    "id": 107,
+    "name": "艾葉",
+    "file": "107.艾葉.jpg",
+    "sheet": "sheet-06.jpg",
+    "slot": 6
+  },
+  {
+    "id": 108,
+    "name": "西洋參",
+    "file": "108.西洋參.jpg",
+    "sheet": "sheet-06.jpg",
+    "slot": 7
+  },
+  {
+    "id": 109,
+    "name": "何首烏",
+    "file": "109.何首烏.jpg",
+    "sheet": "sheet-06.jpg",
+    "slot": 8
+  },
+  {
+    "id": 110,
+    "name": "佛手柑",
+    "file": "110.佛手柑.jpg",
+    "sheet": "sheet-06.jpg",
+    "slot": 9
+  },
+  {
+    "id": 111,
+    "name": "吳茱萸",
+    "file": "111.吳茱萸.jpg",
+    "sheet": "sheet-06.jpg",
+    "slot": 10
+  },
+  {
+    "id": 112,
+    "name": "忍冬藤",
+    "file": "112.忍冬藤.jpg",
+    "sheet": "sheet-06.jpg",
+    "slot": 11
+  },
+  {
+    "id": 113,
+    "name": "杜仲",
+    "file": "113.杜仲.jpg",
+    "sheet": "sheet-06.jpg",
+    "slot": 12
+  },
+  {
+    "id": 114,
+    "name": "沉香",
+    "file": "114.沉香.jpg",
+    "sheet": "sheet-06.jpg",
+    "slot": 13
+  },
+  {
+    "id": 115,
+    "name": "沒藥",
+    "file": "115.沒藥.jpg",
+    "sheet": "sheet-06.jpg",
+    "slot": 14
+  },
+  {
+    "id": 116,
+    "name": "沙苑蒺藜",
+    "file": "116.沙苑蒺藜.jpg",
+    "sheet": "sheet-06.jpg",
+    "slot": 15
+  },
+  {
+    "id": 117,
+    "name": "牡丹皮",
+    "file": "117.牡丹皮.jpg",
+    "sheet": "sheet-06.jpg",
+    "slot": 16
+  },
+  {
+    "id": 118,
+    "name": "牡蠣",
+    "file": "118.牡蠣.jpg",
+    "sheet": "sheet-06.jpg",
+    "slot": 17
+  },
+  {
+    "id": 119,
+    "name": "皂角刺",
+    "file": "119.皂角刺.jpg",
+    "sheet": "sheet-06.jpg",
+    "slot": 18
+  },
+  {
+    "id": 120,
+    "name": "芒硝",
+    "file": "120.芒硝.jpg",
+    "sheet": "sheet-06.jpg",
+    "slot": 19
+  },
+  {
+    "id": 121,
+    "name": "豆蔻",
+    "file": "121.豆蔻.jpg",
+    "sheet": "sheet-07.jpg",
+    "slot": 0
+  },
+  {
+    "id": 122,
+    "name": "赤小豆",
+    "file": "122.赤小豆.jpg",
+    "sheet": "sheet-07.jpg",
+    "slot": 1
+  },
+  {
+    "id": 123,
+    "name": "赤石脂",
+    "file": "123.赤石脂.jpg",
+    "sheet": "sheet-07.jpg",
+    "slot": 2
+  },
+  {
+    "id": 124,
+    "name": "赤芍",
+    "file": "124.赤芍.jpg",
+    "sheet": "sheet-07.jpg",
+    "slot": 3
+  },
+  {
+    "id": 125,
+    "name": "赤茯苓",
+    "file": "125.赤茯苓.jpg",
+    "sheet": "sheet-07.jpg",
+    "slot": 4
+  },
+  {
+    "id": 126,
+    "name": "車前子",
+    "file": "126.車前子.jpg",
+    "sheet": "sheet-07.jpg",
+    "slot": 5
+  },
+  {
+    "id": 127,
+    "name": "車前草",
+    "file": "127.車前草.jpg",
+    "sheet": "sheet-07.jpg",
+    "slot": 6
+  },
+  {
+    "id": 128,
+    "name": "辛夷",
+    "file": "128.辛夷.jpg",
+    "sheet": "sheet-07.jpg",
+    "slot": 7
+  },
+  {
+    "id": 129,
+    "name": "防己",
+    "file": "129.防己.jpg",
+    "sheet": "sheet-07.jpg",
+    "slot": 8
+  },
+  {
+    "id": 130,
+    "name": "防風",
+    "file": "130.防風.jpg",
+    "sheet": "sheet-07.jpg",
+    "slot": 9
+  },
+  {
+    "id": 131,
+    "name": "乳香",
+    "file": "131.乳香.jpg",
+    "sheet": "sheet-07.jpg",
+    "slot": 10
+  },
+  {
+    "id": 132,
+    "name": "亞麻仁",
+    "file": "132.亞麻仁.jpg",
+    "sheet": "sheet-07.jpg",
+    "slot": 11
+  },
+  {
+    "id": 133,
+    "name": "佩蘭",
+    "file": "133.佩蘭.jpg",
+    "sheet": "sheet-07.jpg",
+    "slot": 12
+  },
+  {
+    "id": 134,
+    "name": "使君子",
+    "file": "134.使君子.jpg",
+    "sheet": "sheet-07.jpg",
+    "slot": 13
+  },
+  {
+    "id": 135,
+    "name": "刺五加",
+    "file": "135.刺五加.jpg",
+    "sheet": "sheet-07.jpg",
+    "slot": 14
+  },
+  {
+    "id": 136,
+    "name": "味牛膝",
+    "file": "136.味牛膝.jpg",
+    "sheet": "sheet-07.jpg",
+    "slot": 15
+  },
+  {
+    "id": 137,
+    "name": "夜交藤",
+    "file": "137.夜交藤.jpg",
+    "sheet": "sheet-07.jpg",
+    "slot": 16
+  },
+  {
+    "id": 138,
+    "name": "延胡索",
+    "file": "138.延胡索.jpg",
+    "sheet": "sheet-07.jpg",
+    "slot": 17
+  },
+  {
+    "id": 139,
+    "name": "明礬",
+    "file": "139.明礬.jpg",
+    "sheet": "sheet-07.jpg",
+    "slot": 18
+  },
+  {
+    "id": 140,
+    "name": "東洋參",
+    "file": "140.東洋參.jpg",
+    "sheet": "sheet-07.jpg",
+    "slot": 19
+  },
+  {
+    "id": 141,
+    "name": "松節",
+    "file": "141.松節.jpg",
+    "sheet": "sheet-08.jpg",
+    "slot": 0
+  },
+  {
+    "id": 142,
+    "name": "枇杷葉",
+    "file": "142.枇杷葉.jpg",
+    "sheet": "sheet-08.jpg",
+    "slot": 1
+  },
+  {
+    "id": 143,
+    "name": "狗脊",
+    "file": "143.狗脊.jpg",
+    "sheet": "sheet-08.jpg",
+    "slot": 2
+  },
+  {
+    "id": 144,
+    "name": "玫瑰花",
+    "file": "144.玫瑰花.jpg",
+    "sheet": "sheet-08.jpg",
+    "slot": 3
+  },
+  {
+    "id": 145,
+    "name": "知母",
+    "file": "145.知母.jpg",
+    "sheet": "sheet-08.jpg",
+    "slot": 4
+  },
+  {
+    "id": 146,
+    "name": "羌活",
+    "file": "146.羌活.jpg",
+    "sheet": "sheet-08.jpg",
+    "slot": 5
+  },
+  {
+    "id": 147,
+    "name": "芡實",
+    "file": "147.芡實.jpg",
+    "sheet": "sheet-08.jpg",
+    "slot": 6
+  },
+  {
+    "id": 148,
+    "name": "芫花",
+    "file": "148.芫花.jpg",
+    "sheet": "sheet-08.jpg",
+    "slot": 7
+  },
+  {
+    "id": 149,
+    "name": "花椒",
+    "file": "149.花椒.jpg",
+    "sheet": "sheet-08.jpg",
+    "slot": 8
+  },
+  {
+    "id": 150,
+    "name": "虎杖",
+    "file": "150.虎杖.jpg",
+    "sheet": "sheet-08.jpg",
+    "slot": 9
+  },
+  {
+    "id": 151,
+    "name": "金銀花",
+    "file": "151.金銀花.jpg",
+    "sheet": "sheet-08.jpg",
+    "slot": 10
+  },
+  {
+    "id": 152,
+    "name": "金錢草",
+    "file": "152.金錢草.jpg",
+    "sheet": "sheet-08.jpg",
+    "slot": 11
+  },
+  {
+    "id": 153,
+    "name": "金櫻子",
+    "file": "153.金櫻子.jpg",
+    "sheet": "sheet-08.jpg",
+    "slot": 12
+  },
+  {
+    "id": 154,
+    "name": "阿膠",
+    "file": "154.阿膠.jpg",
+    "sheet": "sheet-08.jpg",
+    "slot": 13
+  },
+  {
+    "id": 155,
+    "name": "青皮",
+    "file": "155.青皮.jpg",
+    "sheet": "sheet-08.jpg",
+    "slot": 14
+  },
+  {
+    "id": 156,
+    "name": "青葙子",
+    "file": "156.青葙子.jpg",
+    "sheet": "sheet-08.jpg",
+    "slot": 15
+  },
+  {
+    "id": 157,
+    "name": "青黛",
+    "file": "157.青黛.jpg",
+    "sheet": "sheet-08.jpg",
+    "slot": 16
+  },
+  {
+    "id": 158,
+    "name": "前胡",
+    "file": "158.前胡.jpg",
+    "sheet": "sheet-08.jpg",
+    "slot": 17
+  },
+  {
+    "id": 159,
+    "name": "南沙參",
+    "file": "159.南沙參.jpg",
+    "sheet": "sheet-08.jpg",
+    "slot": 18
+  },
+  {
+    "id": 160,
+    "name": "南板藍根",
+    "file": "160.南板藍根.jpg",
+    "sheet": "sheet-08.jpg",
+    "slot": 19
+  },
+  {
+    "id": 161,
+    "name": "厚朴",
+    "file": "161.厚朴.jpg",
+    "sheet": "sheet-09.jpg",
+    "slot": 0
+  },
+  {
+    "id": 162,
+    "name": "威靈仙",
+    "file": "162.威靈仙.jpg",
+    "sheet": "sheet-09.jpg",
+    "slot": 1
+  },
+  {
+    "id": 163,
+    "name": "枳殼",
+    "file": "163.枳殼.jpg",
+    "sheet": "sheet-09.jpg",
+    "slot": 2
+  },
+  {
+    "id": 164,
+    "name": "枳實",
+    "file": "164.枳實.jpg",
+    "sheet": "sheet-09.jpg",
+    "slot": 3
+  },
+  {
+    "id": 165,
+    "name": "柏子仁",
+    "file": "165.柏子仁.jpg",
+    "sheet": "sheet-09.jpg",
+    "slot": 4
+  },
+  {
+    "id": 166,
+    "name": "炮附片",
+    "file": "166.炮附片.jpg",
+    "sheet": "sheet-09.jpg",
+    "slot": 5
+  },
+  {
+    "id": 167,
+    "name": "砂仁",
+    "file": "167.砂仁.jpg",
+    "sheet": "sheet-09.jpg",
+    "slot": 6
+  },
+  {
+    "id": 168,
+    "name": "紅花",
+    "file": "168.紅花.jpg",
+    "sheet": "sheet-09.jpg",
+    "slot": 7
+  },
+  {
+    "id": 169,
+    "name": "紅耆",
+    "file": "169.紅耆.jpg",
+    "sheet": "sheet-09.jpg",
+    "slot": 8
+  },
+  {
+    "id": 170,
+    "name": "胖大海",
+    "file": "170.胖大海.jpg",
+    "sheet": "sheet-09.jpg",
+    "slot": 9
+  },
+  {
+    "id": 171,
+    "name": "核桃仁",
+    "file": "171.核桃仁.jpg",
+    "sheet": "sheet-09.jpg",
+    "slot": 10
+  },
+  {
+    "id": 172,
+    "name": "胡麻仁",
+    "file": "172.胡麻仁.jpg",
+    "sheet": "sheet-09.jpg",
+    "slot": 11
+  },
+  {
+    "id": 173,
+    "name": "胡黃連",
+    "file": "173.胡黃連.jpg",
+    "sheet": "sheet-09.jpg",
+    "slot": 12
+  },
+  {
+    "id": 174,
+    "name": "胡蘆巴",
+    "file": "174.胡蘆巴.jpg",
+    "sheet": "sheet-09.jpg",
+    "slot": 13
+  },
+  {
+    "id": 175,
+    "name": "苦石蓮",
+    "file": "175.苦石蓮.jpg",
+    "sheet": "sheet-09.jpg",
+    "slot": 14
+  },
+  {
+    "id": 176,
+    "name": "苦杏仁",
+    "file": "176.苦杏仁.jpg",
+    "sheet": "sheet-09.jpg",
+    "slot": 15
+  },
+  {
+    "id": 177,
+    "name": "苦參",
+    "file": "177.苦參.jpg",
+    "sheet": "sheet-09.jpg",
+    "slot": 16
+  },
+  {
+    "id": 178,
+    "name": "茺蔚子",
+    "file": "178.茺蔚子.jpg",
+    "sheet": "sheet-09.jpg",
+    "slot": 17
+  },
+  {
+    "id": 179,
+    "name": "郁李仁",
+    "file": "179.郁李仁.jpg",
+    "sheet": "sheet-09.jpg",
+    "slot": 18
+  },
+  {
+    "id": 180,
+    "name": "降真香",
+    "file": "180.降真香.jpg",
+    "sheet": "sheet-09.jpg",
+    "slot": 19
+  },
+  {
+    "id": 181,
+    "name": "韭菜子",
+    "file": "181.韭菜子.jpg",
+    "sheet": "sheet-10.jpg",
+    "slot": 0
+  },
+  {
+    "id": 182,
+    "name": "香附",
+    "file": "182.香附.jpg",
+    "sheet": "sheet-10.jpg",
+    "slot": 1
+  },
+  {
+    "id": 183,
+    "name": "香薷",
+    "file": "183.香薷.jpg",
+    "sheet": "sheet-10.jpg",
+    "slot": 2
+  },
+  {
+    "id": 184,
+    "name": "倒地蜈蚣",
+    "file": "184.倒地蜈蚣.jpg",
+    "sheet": "sheet-10.jpg",
+    "slot": 3
+  },
+  {
+    "id": 185,
+    "name": "夏枯草",
+    "file": "185.夏枯草.jpg",
+    "sheet": "sheet-10.jpg",
+    "slot": 4
+  },
+  {
+    "id": 186,
+    "name": "射干",
+    "file": "186.射干.jpg",
+    "sheet": "sheet-10.jpg",
+    "slot": 5
+  },
+  {
+    "id": 187,
+    "name": "柴胡",
+    "file": "187.柴胡.jpg",
+    "sheet": "sheet-10.jpg",
+    "slot": 6
+  },
+  {
+    "id": 188,
+    "name": "栝樓仁",
+    "file": "188.栝樓仁.jpg",
+    "sheet": "sheet-10.jpg",
+    "slot": 7
+  },
+  {
+    "id": 189,
+    "name": "栝樓實",
+    "file": "189.栝樓實.jpg",
+    "sheet": "sheet-10.jpg",
+    "slot": 8
+  },
+  {
+    "id": 190,
+    "name": "漏蘆",
+    "file": "190.漏蘆.jpg",
+    "sheet": "sheet-10.jpg",
+    "slot": 9
+  },
+  {
+    "id": 191,
+    "name": "桂枝",
+    "file": "191.桂枝.jpg",
+    "sheet": "sheet-10.jpg",
+    "slot": 10
+  },
+  {
+    "id": 192,
+    "name": "桃仁",
+    "file": "192.桃仁.jpg",
+    "sheet": "sheet-10.jpg",
+    "slot": 11
+  },
+  {
+    "id": 193,
+    "name": "桑白皮",
+    "file": "193.桑白皮.jpg",
+    "sheet": "sheet-10.jpg",
+    "slot": 12
+  },
+  {
+    "id": 194,
+    "name": "桑枝",
+    "file": "194.桑枝.jpg",
+    "sheet": "sheet-10.jpg",
+    "slot": 13
+  },
+  {
+    "id": 195,
+    "name": "桑寄生",
+    "file": "195.桑寄生.jpg",
+    "sheet": "sheet-10.jpg",
+    "slot": 14
+  },
+  {
+    "id": 196,
+    "name": "桑葉",
+    "file": "196.桑葉.jpg",
+    "sheet": "sheet-10.jpg",
+    "slot": 15
+  },
+  {
+    "id": 197,
+    "name": "桑螵蛸",
+    "file": "197.桑螵蛸.jpg",
+    "sheet": "sheet-10.jpg",
+    "slot": 16
+  },
+  {
+    "id": 198,
+    "name": "桔梗",
+    "file": "198.桔梗.jpg",
+    "sheet": "sheet-10.jpg",
+    "slot": 17
+  },
+  {
+    "id": 199,
+    "name": "浙貝母",
+    "file": "199.浙貝母.jpg",
+    "sheet": "sheet-10.jpg",
+    "slot": 18
+  },
+  {
+    "id": 200,
+    "name": "浮小麥",
+    "file": "200.浮小麥.jpg",
+    "sheet": "sheet-10.jpg",
+    "slot": 19
+  },
+  {
+    "id": 201,
+    "name": "海金沙",
+    "file": "201.海金沙.jpg",
+    "sheet": "sheet-11.jpg",
+    "slot": 0
+  },
+  {
+    "id": 202,
+    "name": "海桐皮",
+    "file": "202.海桐皮.jpg",
+    "sheet": "sheet-11.jpg",
+    "slot": 1
+  },
+  {
+    "id": 203,
+    "name": "海馬",
+    "file": "203.海馬.jpg",
+    "sheet": "sheet-11.jpg",
+    "slot": 2
+  },
+  {
+    "id": 204,
+    "name": "海螵蛸",
+    "file": "204.海螵蛸.jpg",
+    "sheet": "sheet-11.jpg",
+    "slot": 3
+  },
+  {
+    "id": 205,
+    "name": "海藻",
+    "file": "205.海藻.jpg",
+    "sheet": "sheet-11.jpg",
+    "slot": 4
+  },
+  {
+    "id": 206,
+    "name": "烏藥",
+    "file": "206.烏藥.jpg",
+    "sheet": "sheet-11.jpg",
+    "slot": 5
+  },
+  {
+    "id": 207,
+    "name": "益母草",
+    "file": "207.益母草.jpg",
+    "sheet": "sheet-11.jpg",
+    "slot": 6
+  },
+  {
+    "id": 208,
+    "name": "益智仁",
+    "file": "208.益智仁.jpg",
+    "sheet": "sheet-11.jpg",
+    "slot": 7
+  },
+  {
+    "id": 209,
+    "name": "神麴",
+    "file": "209.神麴.jpg",
+    "sheet": "sheet-11.jpg",
+    "slot": 8
+  },
+  {
+    "id": 210,
+    "name": "秦皮",
+    "file": "210.秦皮.jpg",
+    "sheet": "sheet-11.jpg",
+    "slot": 9
+  },
+  {
+    "id": 211,
+    "name": "秦艽",
+    "file": "211.秦艽.jpg",
+    "sheet": "sheet-11.jpg",
+    "slot": 10
+  },
+  {
+    "id": 212,
+    "name": "粉萆薢",
+    "file": "212.粉萆薢.jpg",
+    "sheet": "sheet-11.jpg",
+    "slot": 11
+  },
+  {
+    "id": 213,
+    "name": "臭椿皮",
+    "file": "213.臭椿皮.jpg",
+    "sheet": "sheet-11.jpg",
+    "slot": 12
+  },
+  {
+    "id": 214,
+    "name": "莤草",
+    "file": "214.莤草.jpg",
+    "sheet": "sheet-11.jpg",
+    "slot": 13
+  },
+  {
+    "id": 215,
+    "name": "茯苓",
+    "file": "215.茯苓.jpg",
+    "sheet": "sheet-11.jpg",
+    "slot": 14
+  },
+  {
+    "id": 216,
+    "name": "茯神",
+    "file": "216.茯神.jpg",
+    "sheet": "sheet-11.jpg",
+    "slot": 15
+  },
+  {
+    "id": 217,
+    "name": "茵陳蒿",
+    "file": "217.茵陳蒿.jpg",
+    "sheet": "sheet-11.jpg",
+    "slot": 16
+  },
+  {
+    "id": 218,
+    "name": "草豆蔻",
+    "file": "218.草豆蔻.jpg",
+    "sheet": "sheet-11.jpg",
+    "slot": 17
+  },
+  {
+    "id": 219,
+    "name": "草果",
+    "file": "219.草果.jpg",
+    "sheet": "sheet-11.jpg",
+    "slot": 18
+  },
+  {
+    "id": 220,
+    "name": "草烏頭",
+    "file": "220.草烏頭.jpg",
+    "sheet": "sheet-11.jpg",
+    "slot": 19
+  },
+  {
+    "id": 221,
+    "name": "荊芥",
+    "file": "221.荊芥.jpg",
+    "sheet": "sheet-12.jpg",
+    "slot": 0
+  },
+  {
+    "id": 222,
+    "name": "馬錢子",
+    "file": "222.馬錢子.jpg",
+    "sheet": "sheet-12.jpg",
+    "slot": 1
+  },
+  {
+    "id": 223,
+    "name": "骨碎補",
+    "file": "223.骨碎補.jpg",
+    "sheet": "sheet-12.jpg",
+    "slot": 2
+  },
+  {
+    "id": 224,
+    "name": "高良薑",
+    "file": "224.高良薑.jpg",
+    "sheet": "sheet-12.jpg",
+    "slot": 3
+  },
+  {
+    "id": 225,
+    "name": "乾薑",
+    "file": "225.乾薑.jpg",
+    "sheet": "sheet-12.jpg",
+    "slot": 4
+  },
+  {
+    "id": 226,
+    "name": "側柏葉",
+    "file": "226.側柏葉.jpg",
+    "sheet": "sheet-12.jpg",
+    "slot": 5
+  },
+  {
+    "id": 227,
+    "name": "密蒙花",
+    "file": "227.密蒙花.jpg",
+    "sheet": "sheet-12.jpg",
+    "slot": 6
+  },
+  {
+    "id": 228,
+    "name": "常山",
+    "file": "228.常山.jpg",
+    "sheet": "sheet-12.jpg",
+    "slot": 7
+  },
+  {
+    "id": 229,
+    "name": "敗醬",
+    "file": "229.敗醬.jpg",
+    "sheet": "sheet-12.jpg",
+    "slot": 8
+  },
+  {
+    "id": 230,
+    "name": "旋覆花",
+    "file": "230.旋覆花.jpg",
+    "sheet": "sheet-12.jpg",
+    "slot": 9
+  },
+  {
+    "id": 231,
+    "name": "梔子",
+    "file": "231.梔子.jpg",
+    "sheet": "sheet-12.jpg",
+    "slot": 10
+  },
+  {
+    "id": 232,
+    "name": "淡竹葉",
+    "file": "232.淡竹葉.jpg",
+    "sheet": "sheet-12.jpg",
+    "slot": 11
+  },
+  {
+    "id": 233,
+    "name": "淡豆豉",
+    "file": "233.淡豆豉.jpg",
+    "sheet": "sheet-12.jpg",
+    "slot": 12
+  },
+  {
+    "id": 234,
+    "name": "淫羊藿",
+    "file": "234.淫羊藿.jpg",
+    "sheet": "sheet-12.jpg",
+    "slot": 13
+  },
+  {
+    "id": 235,
+    "name": "清半夏",
+    "file": "235.清半夏.jpg",
+    "sheet": "sheet-12.jpg",
+    "slot": 14
+  },
+  {
+    "id": 236,
+    "name": "牽牛子",
+    "file": "236.牽牛子.jpg",
+    "sheet": "sheet-12.jpg",
+    "slot": 15
+  },
+  {
+    "id": 237,
+    "name": "細辛",
+    "file": "237.細辛.jpg",
+    "sheet": "sheet-12.jpg",
+    "slot": 16
+  },
+  {
+    "id": 238,
+    "name": "荷葉",
+    "file": "238.荷葉.jpg",
+    "sheet": "sheet-12.jpg",
+    "slot": 17
+  },
+  {
+    "id": 239,
+    "name": "莪朮",
+    "file": "239.莪朮.jpg",
+    "sheet": "sheet-12.jpg",
+    "slot": 18
+  },
+  {
+    "id": 240,
+    "name": "蛇床子",
+    "file": "240.蛇床子.jpg",
+    "sheet": "sheet-12.jpg",
+    "slot": 19
+  },
+  {
+    "id": 241,
+    "name": "貫眾",
+    "file": "241.貫眾.jpg",
+    "sheet": "sheet-13.jpg",
+    "slot": 0
+  },
+  {
+    "id": 242,
+    "name": "通草",
+    "file": "242.通草.jpg",
+    "sheet": "sheet-13.jpg",
+    "slot": 1
+  },
+  {
+    "id": 243,
+    "name": "連翹",
+    "file": "243.連翹.jpg",
+    "sheet": "sheet-13.jpg",
+    "slot": 2
+  },
+  {
+    "id": 244,
+    "name": "陳皮",
+    "file": "244.陳皮.jpg",
+    "sheet": "sheet-13.jpg",
+    "slot": 3
+  },
+  {
+    "id": 245,
+    "name": "魚腥草",
+    "file": "245.魚腥草.jpg",
+    "sheet": "sheet-13.jpg",
+    "slot": 4
+  },
+  {
+    "id": 246,
+    "name": "鹿茸",
+    "file": "246.鹿茸.jpg",
+    "sheet": "sheet-13.jpg",
+    "slot": 5
+  },
+  {
+    "id": 247,
+    "name": "麥芽",
+    "file": "247.麥芽.jpg",
+    "sheet": "sheet-13.jpg",
+    "slot": 6
+  },
+  {
+    "id": 248,
+    "name": "麥門冬",
+    "file": "248.麥門冬.jpg",
+    "sheet": "sheet-13.jpg",
+    "slot": 7
+  },
+  {
+    "id": 249,
+    "name": "麻黃",
+    "file": "249.麻黃.jpg",
+    "sheet": "sheet-13.jpg",
+    "slot": 8
+  },
+  {
+    "id": 250,
+    "name": "斑蝥",
+    "file": "250.斑蝥.jpg",
+    "sheet": "sheet-13.jpg",
+    "slot": 9
+  },
+  {
+    "id": 251,
+    "name": "楮實子",
+    "file": "251.楮實子.jpg",
+    "sheet": "sheet-13.jpg",
+    "slot": 10
+  },
+  {
+    "id": 252,
+    "name": "款冬花",
+    "file": "252.款冬花.jpg",
+    "sheet": "sheet-13.jpg",
+    "slot": 11
+  },
+  {
+    "id": 253,
+    "name": "番紅花",
+    "file": "253.番紅花.jpg",
+    "sheet": "sheet-13.jpg",
+    "slot": 12
+  },
+  {
+    "id": 254,
+    "name": "紫花地丁",
+    "file": "254.紫花地丁.jpg",
+    "sheet": "sheet-13.jpg",
+    "slot": 13
+  },
+  {
+    "id": 255,
+    "name": "紫背天葵",
+    "file": "255.紫背天葵.jpg",
+    "sheet": "sheet-13.jpg",
+    "slot": 14
+  },
+  {
+    "id": 256,
+    "name": "紫草",
+    "file": "256.紫草.jpg",
+    "sheet": "sheet-13.jpg",
+    "slot": 15
+  },
+  {
+    "id": 257,
+    "name": "紫菀",
+    "file": "257.紫菀.jpg",
+    "sheet": "sheet-13.jpg",
+    "slot": 16
+  },
+  {
+    "id": 258,
+    "name": "紫蘇子",
+    "file": "258.紫蘇子.jpg",
+    "sheet": "sheet-13.jpg",
+    "slot": 17
+  },
+  {
+    "id": 259,
+    "name": "紫蘇梗",
+    "file": "259.紫蘇梗.jpg",
+    "sheet": "sheet-13.jpg",
+    "slot": 18
+  },
+  {
+    "id": 260,
+    "name": "紫蘇葉",
+    "file": "260.紫蘇葉.jpg",
+    "sheet": "sheet-13.jpg",
+    "slot": 19
+  },
+  {
+    "id": 261,
+    "name": "絞股藍",
+    "file": "261.絞股藍.jpg",
+    "sheet": "sheet-14.jpg",
+    "slot": 0
+  },
+  {
+    "id": 262,
+    "name": "絡石藤",
+    "file": "262.絡石藤.jpg",
+    "sheet": "sheet-14.jpg",
+    "slot": 1
+  },
+  {
+    "id": 263,
+    "name": "菟絲子",
+    "file": "263.菟絲子.jpg",
+    "sheet": "sheet-14.jpg",
+    "slot": 2
+  },
+  {
+    "id": 264,
+    "name": "萊菔子",
+    "file": "264.萊菔子.jpg",
+    "sheet": "sheet-14.jpg",
+    "slot": 3
+  },
+  {
+    "id": 265,
+    "name": "訶子",
+    "file": "265.訶子.jpg",
+    "sheet": "sheet-14.jpg",
+    "slot": 4
+  },
+  {
+    "id": 266,
+    "name": "黃芩",
+    "file": "266.黃芩.jpg",
+    "sheet": "sheet-14.jpg",
+    "slot": 5
+  },
+  {
+    "id": 267,
+    "name": "黃柏",
+    "file": "267.黃柏.jpg",
+    "sheet": "sheet-14.jpg",
+    "slot": 6
+  },
+  {
+    "id": 268,
+    "name": "黃耆",
+    "file": "268.黃耆.jpg",
+    "sheet": "sheet-14.jpg",
+    "slot": 7
+  },
+  {
+    "id": 269,
+    "name": "黃連",
+    "file": "269.黃連.jpg",
+    "sheet": "sheet-14.jpg",
+    "slot": 8
+  },
+  {
+    "id": 270,
+    "name": "黃精",
+    "file": "270.黃精.jpg",
+    "sheet": "sheet-14.jpg",
+    "slot": 9
+  },
+  {
+    "id": 271,
+    "name": "黑胡椒",
+    "file": "271.黑胡椒.jpg",
+    "sheet": "sheet-14.jpg",
+    "slot": 10
+  },
+  {
+    "id": 272,
+    "name": "黑順片",
+    "file": "272.黑順片.jpg",
+    "sheet": "sheet-14.jpg",
+    "slot": 11
+  },
+  {
+    "id": 273,
+    "name": "滑石",
+    "file": "273.滑石.jpg",
+    "sheet": "sheet-14.jpg",
+    "slot": 12
+  },
+  {
+    "id": 274,
+    "name": "萹蓄",
+    "file": "274.萹蓄.jpg",
+    "sheet": "sheet-14.jpg",
+    "slot": 13
+  },
+  {
+    "id": 275,
+    "name": "葛根",
+    "file": "275.葛根.jpg",
+    "sheet": "sheet-14.jpg",
+    "slot": 14
+  },
+  {
+    "id": 276,
+    "name": "葶藶子",
+    "file": "276.葶藶子.jpg",
+    "sheet": "sheet-14.jpg",
+    "slot": 15
+  },
+  {
+    "id": 277,
+    "name": "補骨脂",
+    "file": "277.補骨脂.jpg",
+    "sheet": "sheet-14.jpg",
+    "slot": 16
+  },
+  {
+    "id": 278,
+    "name": "路路通",
+    "file": "278.路路通.jpg",
+    "sheet": "sheet-14.jpg",
+    "slot": 17
+  },
+  {
+    "id": 279,
+    "name": "鉤藤",
+    "file": "279.鉤藤.jpg",
+    "sheet": "sheet-14.jpg",
+    "slot": 18
+  },
+  {
+    "id": 280,
+    "name": "槐米",
+    "file": "280.槐米.jpg",
+    "sheet": "sheet-14.jpg",
+    "slot": 19
+  },
+  {
+    "id": 281,
+    "name": "綠豆癀",
+    "file": "281.綠豆癀.jpg",
+    "sheet": "sheet-15.jpg",
+    "slot": 0
+  },
+  {
+    "id": 282,
+    "name": "綿茵陳",
+    "file": "282.綿茵陳.jpg",
+    "sheet": "sheet-15.jpg",
+    "slot": 1
+  },
+  {
+    "id": 283,
+    "name": "蒲公英",
+    "file": "283.蒲公英.jpg",
+    "sheet": "sheet-15.jpg",
+    "slot": 2
+  },
+  {
+    "id": 284,
+    "name": "蒲黃",
+    "file": "284.蒲黃.jpg",
+    "sheet": "sheet-15.jpg",
+    "slot": 3
+  },
+  {
+    "id": 285,
+    "name": "蒺藜",
+    "file": "285.蒺藜.jpg",
+    "sheet": "sheet-15.jpg",
+    "slot": 4
+  },
+  {
+    "id": 286,
+    "name": "蒼朮",
+    "file": "286.蒼朮.jpg",
+    "sheet": "sheet-15.jpg",
+    "slot": 5
+  },
+  {
+    "id": 287,
+    "name": "蒼耳子",
+    "file": "287.蒼耳子.jpg",
+    "sheet": "sheet-15.jpg",
+    "slot": 6
+  },
+  {
+    "id": 288,
+    "name": "蓖麻子",
+    "file": "288.蓖麻子.jpg",
+    "sheet": "sheet-15.jpg",
+    "slot": 7
+  },
+  {
+    "id": 289,
+    "name": "豨薟草",
+    "file": "289.豨薟草.jpg",
+    "sheet": "sheet-15.jpg",
+    "slot": 8
+  },
+  {
+    "id": 290,
+    "name": "遠志",
+    "file": "290.遠志.jpg",
+    "sheet": "sheet-15.jpg",
+    "slot": 9
+  },
+  {
+    "id": 291,
+    "name": "酸棗仁",
+    "file": "291.酸棗仁.jpg",
+    "sheet": "sheet-15.jpg",
+    "slot": 10
+  },
+  {
+    "id": 292,
+    "name": "銀柴胡",
+    "file": "292.銀柴胡.jpg",
+    "sheet": "sheet-15.jpg",
+    "slot": 11
+  },
+  {
+    "id": 293,
+    "name": "鳳尾草",
+    "file": "293.鳳尾草.jpg",
+    "sheet": "sheet-15.jpg",
+    "slot": 12
+  },
+  {
+    "id": 294,
+    "name": "墨旱蓮",
+    "file": "294.墨旱蓮.jpg",
+    "sheet": "sheet-15.jpg",
+    "slot": 13
+  },
+  {
+    "id": 295,
+    "name": "廣藿香",
+    "file": "295.廣藿香.jpg",
+    "sheet": "sheet-15.jpg",
+    "slot": 14
+  },
+  {
+    "id": 296,
+    "name": "槲寄生",
+    "file": "296.槲寄生.jpg",
+    "sheet": "sheet-15.jpg",
+    "slot": 15
+  },
+  {
+    "id": 297,
+    "name": "穀芽",
+    "file": "297.穀芽.jpg",
+    "sheet": "sheet-15.jpg",
+    "slot": 16
+  },
+  {
+    "id": 298,
+    "name": "穀精草",
+    "file": "298.穀精草.jpg",
+    "sheet": "sheet-15.jpg",
+    "slot": 17
+  },
+  {
+    "id": 299,
+    "name": "蓮子心",
+    "file": "299.蓮子心.jpg",
+    "sheet": "sheet-15.jpg",
+    "slot": 18
+  },
+  {
+    "id": 300,
+    "name": "蓮鬚",
+    "file": "300.蓮鬚.jpg",
+    "sheet": "sheet-15.jpg",
+    "slot": 19
+  },
+  {
+    "id": 301,
+    "name": "蓽茇",
+    "file": "301.蓽茇.jpg",
+    "sheet": "sheet-16.jpg",
+    "slot": 0
+  },
+  {
+    "id": 302,
+    "name": "蔓荊子",
+    "file": "302.蔓荊子.jpg",
+    "sheet": "sheet-16.jpg",
+    "slot": 1
+  },
+  {
+    "id": 303,
+    "name": "豬苓",
+    "file": "303.豬苓.jpg",
+    "sheet": "sheet-16.jpg",
+    "slot": 2
+  },
+  {
+    "id": 304,
+    "name": "鴉膽子",
+    "file": "304.鴉膽子.jpg",
+    "sheet": "sheet-16.jpg",
+    "slot": 3
+  },
+  {
+    "id": 305,
+    "name": "橘紅",
+    "file": "305.橘紅.jpg",
+    "sheet": "sheet-16.jpg",
+    "slot": 4
+  },
+  {
+    "id": 306,
+    "name": "澤瀉",
+    "file": "306.澤瀉.jpg",
+    "sheet": "sheet-16.jpg",
+    "slot": 5
+  },
+  {
+    "id": 307,
+    "name": "澤蘭",
+    "file": "307.澤蘭.jpg",
+    "sheet": "sheet-16.jpg",
+    "slot": 6
+  },
+  {
+    "id": 308,
+    "name": "燈心草",
+    "file": "308.燈心草.jpg",
+    "sheet": "sheet-16.jpg",
+    "slot": 7
+  },
+  {
+    "id": 309,
+    "name": "獨活",
+    "file": "309.獨活.jpg",
+    "sheet": "sheet-16.jpg",
+    "slot": 8
+  },
+  {
+    "id": 310,
+    "name": "蕎麥",
+    "file": "310.蕎麥.jpg",
+    "sheet": "sheet-16.jpg",
+    "slot": 9
+  },
+  {
+    "id": 311,
+    "name": "龍骨",
+    "file": "311.龍骨.jpg",
+    "sheet": "sheet-16.jpg",
+    "slot": 10
+  },
+  {
+    "id": 312,
+    "name": "龍膽",
+    "file": "312.龍膽.jpg",
+    "sheet": "sheet-16.jpg",
+    "slot": 11
+  },
+  {
+    "id": 313,
+    "name": "龜板",
+    "file": "313.龜板.jpg",
+    "sheet": "sheet-16.jpg",
+    "slot": 12
+  },
+  {
+    "id": 314,
+    "name": "檀香",
+    "file": "314.檀香.jpg",
+    "sheet": "sheet-16.jpg",
+    "slot": 13
+  },
+  {
+    "id": 315,
+    "name": "薄荷",
+    "file": "315.薄荷.jpg",
+    "sheet": "sheet-16.jpg",
+    "slot": 14
+  },
+  {
+    "id": 316,
+    "name": "薄荷腦",
+    "file": "316.薄荷腦.jpg",
+    "sheet": "sheet-16.jpg",
+    "slot": 15
+  },
+  {
+    "id": 317,
+    "name": "薑半夏",
+    "file": "317.薑半夏.jpg",
+    "sheet": "sheet-16.jpg",
+    "slot": 16
+  },
+  {
+    "id": 318,
+    "name": "薑黃",
+    "file": "318.薑黃.jpg",
+    "sheet": "sheet-16.jpg",
+    "slot": 17
+  },
+  {
+    "id": 319,
+    "name": "薤白",
+    "file": "319.薤白.jpg",
+    "sheet": "sheet-16.jpg",
+    "slot": 18
+  },
+  {
+    "id": 320,
+    "name": "檳榔",
+    "file": "320.檳榔.jpg",
+    "sheet": "sheet-16.jpg",
+    "slot": 19
+  },
+  {
+    "id": 321,
+    "name": "瞿麥",
+    "file": "321.瞿麥.jpg",
+    "sheet": "sheet-17.jpg",
+    "slot": 0
+  },
+  {
+    "id": 322,
+    "name": "藁本",
+    "file": "322.藁本.jpg",
+    "sheet": "sheet-17.jpg",
+    "slot": 1
+  },
+  {
+    "id": 323,
+    "name": "藏青果",
+    "file": "323.藏青果.jpg",
+    "sheet": "sheet-17.jpg",
+    "slot": 2
+  },
+  {
+    "id": 324,
+    "name": "蟬蛻",
+    "file": "324.蟬蛻.jpg",
+    "sheet": "sheet-17.jpg",
+    "slot": 3
+  },
+  {
+    "id": 325,
+    "name": "覆盆子",
+    "file": "325.覆盆子.jpg",
+    "sheet": "sheet-17.jpg",
+    "slot": 4
+  },
+  {
+    "id": 326,
+    "name": "鎖陽",
+    "file": "326.鎖陽.jpg",
+    "sheet": "sheet-17.jpg",
+    "slot": 5
+  },
+  {
+    "id": 327,
+    "name": "雞內金",
+    "file": "327.雞內金.jpg",
+    "sheet": "sheet-17.jpg",
+    "slot": 6
+  },
+  {
+    "id": 328,
+    "name": "雞血藤",
+    "file": "328.雞血藤.jpg",
+    "sheet": "sheet-17.jpg",
+    "slot": 7
+  },
+  {
+    "id": 329,
+    "name": "雞冠花",
+    "file": "329.雞冠花.jpg",
+    "sheet": "sheet-17.jpg",
+    "slot": 8
+  },
+  {
+    "id": 330,
+    "name": "懷牛膝",
+    "file": "330.懷牛膝.jpg",
+    "sheet": "sheet-17.jpg",
+    "slot": 9
+  },
+  {
+    "id": 331,
+    "name": "藕節",
+    "file": "331.藕節.jpg",
+    "sheet": "sheet-17.jpg",
+    "slot": 10
+  },
+  {
+    "id": 332,
+    "name": "蘆根",
+    "file": "332.蘆根.jpg",
+    "sheet": "sheet-17.jpg",
+    "slot": 11
+  },
+  {
+    "id": 333,
+    "name": "蘇木",
+    "file": "333.蘇木.jpg",
+    "sheet": "sheet-17.jpg",
+    "slot": 12
+  },
+  {
+    "id": 334,
+    "name": "黨參",
+    "file": "334.黨參.jpg",
+    "sheet": "sheet-17.jpg",
+    "slot": 13
+  },
+  {
+    "id": 335,
+    "name": "續斷",
+    "file": "335.續斷.jpg",
+    "sheet": "sheet-17.jpg",
+    "slot": 14
+  },
+  {
+    "id": 336,
+    "name": "露蜂房",
+    "file": "336.露蜂房.jpg",
+    "sheet": "sheet-17.jpg",
+    "slot": 15
+  },
+  {
+    "id": 337,
+    "name": "鱉甲",
+    "file": "337.鱉甲.jpg",
+    "sheet": "sheet-17.jpg",
+    "slot": 16
+  },
+  {
+    "id": 338,
+    "name": "蠶砂",
+    "file": "338.蠶砂.jpg",
+    "sheet": "sheet-17.jpg",
+    "slot": 17
+  },
+  {
+    "id": 339,
+    "name": "靈芝",
+    "file": "339.靈芝.jpg",
+    "sheet": "sheet-17.jpg",
+    "slot": 18
+  },
+  {
+    "id": 340,
+    "name": "鬱金",
+    "file": "340.鬱金.jpg",
+    "sheet": "sheet-17.jpg",
+    "slot": 19
+  }
+]
+const $ = id => document.getElementById(id);
+let deck = [], pos = 0, revealed = false;
+function readSet(key){try{return new Set(JSON.parse(localStorage.getItem(key)||'[]'))}catch{return new Set()}}
+let known = readSet('herb-known'), revisit = readSet('herb-review');
+function save(){try{localStorage.setItem('herb-known',JSON.stringify([...known]));localStorage.setItem('herb-review',JSON.stringify([...revisit]))}catch{}}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function makeDeck(){const mode=$('mode').value;deck=shuffle((mode==='due'?ITEMS.filter(x=>revisit.has(x.id)):ITEMS).slice());pos=0;revealed=false;render()}
+function showSpecimen(x){const canvas=$('specimen');const ctx=canvas.getContext('2d');const img=new Image();img.onload=()=>{canvas.width=480;canvas.height=360;const col=x.slot%4,row=Math.floor(x.slot/4);ctx.drawImage(img,col*480,row*360,480,360,0,0,480,360)};img.onerror=()=>{canvas.style.display='none';$('fallback').style.display='block'};img.src='圖集/'+x.sheet}function render(){if(!deck.length){$('specimen').style.display='none';$('fallback').style.display='block';$('fallback').textContent='目前沒有待複習藥材。先在「全部藥材」中作答並加入待複習。';$('answer').classList.add('show');$('name').textContent='複習清單是空的';$('number').textContent='';$('progress').textContent='—';$('fill').style.width='0%';$('reveal').classList.add('hidden');$('correct').classList.add('hidden');$('again').classList.add('hidden');$('next').classList.add('hidden');return}
+const x=deck[pos];$('specimen').style.display='block';$('fallback').style.display='none';$('fallbackFile').textContent=x.file;showSpecimen(x);$('name').textContent=x.name;$('number').textContent='標本編號 '+String(x.id).padStart(3,'0');$('progress').textContent=`第 ${pos+1} / ${deck.length} 張`;$('fill').style.width=`${((pos+1)/deck.length)*100}%`;$('score').textContent=`答對 ${known.size} 味 · 待複習 ${revisit.size} 味`;$('answer').classList.toggle('show',revealed);$('hint').textContent=revealed?'認完後標記答題結果，或繼續下一味':'心中想好答案後，按「翻開藥名」';$('reveal').classList.toggle('hidden',revealed);$('correct').classList.toggle('hidden',!revealed);$('again').classList.toggle('hidden',!revealed);$('next').classList.toggle('hidden',!revealed)}
+function advance(){if(!deck.length)return;pos=(pos+1)%deck.length;revealed=false;render()}
+$('reveal').onclick=()=>{revealed=true;render()};$('correct').onclick=()=>{const id=deck[pos].id;known.add(id);revisit.delete(id);save();advance()};$('again').onclick=()=>{const id=deck[pos].id;revisit.add(id);known.delete(id);save();advance()};$('next').onclick=advance;$('skip').onclick=advance;$('prev').onclick=()=>{if(deck.length){pos=(pos-1+deck.length)%deck.length;revealed=false;render()}};$('shuffle').onclick=makeDeck;$('mode').onchange=makeDeck;$('reset').onclick=()=>{known.clear();revisit.clear();save();makeDeck()};$('totalTag').textContent=`共 ${ITEMS.length} 味藥材`;makeDeck();
+</script></body></html>
+
+
+
